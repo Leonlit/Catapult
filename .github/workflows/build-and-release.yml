@@ -1,0 +1,53 @@
+name: Build and Release Godot Project
+
+on:
+  push:
+    tags:
+      - 'v*' # Runs on tags like v1.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Set up Godot
+      uses: firebelley/setup-godot@v1
+      with:
+        version: 4.2.1
+        export-templates: true
+
+    - name: Export Windows binary
+      run: |
+        mkdir -p build/windows
+        godot --headless --export-release "Windows Desktop" build/windows/binaries.exe
+
+    - name: Export Linux binary
+      run: |
+        mkdir -p build/linux
+        godot --headless --export-release "Linux/X11" build/linux/linux-binary
+        chmod +x build/linux/linux-binary
+
+    - name: Zip Windows binary
+      run: |
+        cd build/windows
+        zip -r ../binaries-windows.zip binaries.exe
+
+    - name: Tar Linux binary
+      run: |
+        cd build/linux
+        tar -czf ../linux-binary.tar.gz linux-binary
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        generate_release_notes: true
+        files: |
+          build/binaries-windows.zip
+          build/linux-binary.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
